@@ -13,11 +13,11 @@
             font-family: 'Jua', sans-serif;
             background-color: #1a202c;
             color: #e2e8f0;
-            overflow-x: hidden; /* 가로 스크롤 방지 */
+            overflow-x: hidden; /* (수정) 가로 스크롤바가 생기는 것을 방지합니다. */
         }
         .wheel-container {
             position: relative;
-            /* PC에서는 최대 400px, 모바일에서는 화면 너비의 90%를 차지하도록 설정 */
+            /* (수정) PC/모바일 화면 크기에 맞게 원판 크기가 조절되도록 수정 */
             width: 90vw;
             height: 90vw;
             max-width: 400px;
@@ -25,10 +25,10 @@
             margin: 0 auto;
         }
         canvas {
-            width: 100%;
-            height: 100%;
+            width: 100%; /* (수정) 컨테이너 크기에 꽉 차게 설정 */
+            height: 100%; /* (수정) 컨테이너 크기에 꽉 차게 설정 */
             display: block;
-            transition: transform 5s cubic-bezier(0.1, 0.7, 0.3, 1);
+            transition: transform 5s cubic-bezier(0.1, 0.7, 0.3, 1); /* 부드러운 회전 효과 */
         }
         .pointer {
             position: absolute;
@@ -39,7 +39,7 @@
             height: 0;
             border-top: 25px solid transparent;
             border-bottom: 25px solid transparent;
-            border-right: 40px solid #f56565;
+            border-right: 40px solid #f56565; /* 빨간색 포인터 */
         }
         .pointer::before {
             content: '';
@@ -70,7 +70,7 @@
         #resultModal {
             background-color: rgba(0, 0, 0, 0.6);
         }
-        /* 3. 당첨 닫기 버튼 클릭 효과 추가 */
+        /* (수정) 당첨 결과 창의 '닫기' 버튼을 클릭할 때 시각적 효과를 추가합니다. */
         #closeModal:active {
             transform: scale(0.95);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
@@ -88,26 +88,31 @@
             100% { transform: translateY(100vh) rotate(720deg); }
         }
 
-        /* 4. 캐릭터 이미지 스타일 */
+        /* (수정) 배경에 추가된 캐릭터 이미지 스타일 */
         .character {
-            position: fixed; /* 화면에 고정 */
+            position: fixed;
             bottom: 0;
-            max-width: 100px; /* 최대 너비 지정 */
-            width: 20vw; /* 화면 너비에 따라 크기 조절 */
-            z-index: -1; /* 다른 콘텐츠 뒤로 보내기 */
+            max-width: 100px;
+            width: 20vw;
+            z-index: -1;
             opacity: 0.8;
         }
         #character-ani {
-            left: 5%; /* 왼쪽에서 5% 떨어진 위치 */
+            left: 5%;
         }
         #character-sani {
-            right: 5%; /* 오른쪽에서 5% 떨어진 위치 */
+            right: 5%;
         }
-        /* 모바일 화면에서는 캐릭터 숨기기 (선택사항) */
+        /* (수정) 화면이 좁은 모바일 기기에서는 캐릭터를 숨깁니다. */
         @media (max-width: 1024px) {
             .character {
                 display: none;
             }
+        }
+        
+        /* (수정) 꽃가루 효과가 다른 버튼 클릭을 막는 현상을 수정합니다. */
+        #confetti-container {
+            pointer-events: none;
         }
     </style>
 </head>
@@ -144,258 +149,262 @@
 
     <div id="resultModal" class="fixed inset-0 hidden items-center justify-center z-50">
         <div id="modalContent" class="bg-gray-800 text-white rounded-2xl shadow-2xl p-10 text-center relative transform transition-all duration-300 scale-95 opacity-0">
-             <div id="confetti-container" class="absolute inset-0 overflow-hidden rounded-2xl"></div>
+            <div id="confetti-container" class="absolute inset-0 overflow-hidden rounded-2xl"></div>
             <h2 class="text-2xl font-bold mb-4">🎉 결과 🎉</h2>
             <p id="resultText" class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-orange-400"></p>
             <button id="closeModal" class="mt-8 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition duration-200">닫기</button>
         </div>
     </div>
 
-    <script>
-        const canvas = document.getElementById('wheelCanvas');
-        const ctx = canvas.getContext('2d');
-        const spinBtn = document.getElementById('spinBtn');
-        const optionInput = document.getElementById('optionInput');
-        const optionWeightInput = document.getElementById('optionWeightInput');
-        const addBtn = document.getElementById('addBtn');
-        const optionsList = document.getElementById('optionsList');
-        const resultModal = document.getElementById('resultModal');
-        const modalContent = document.getElementById('modalContent');
-        const resultText = document.getElementById('resultText');
-        const closeModal = document.getElementById('closeModal');
-        const listToggleBtn = document.getElementById('listToggleBtn');
-        
-        let options = [
-            { name: '🍕피자', weight: 1 },
-            { name: '🍗치킨', weight: 1 },
-            { name: '🍔햄버거', weight: 1 },
-            { name: '🍜라면', weight: 1 },
-            { name: '🍣초밥', weight: 1 },
-            { name: '🍰굶기', weight: 2 }
-        ];
-        
-        const colors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'];
-        
-        let currentRotation = 0;
-        let isSpinning = false;
-        
-        // 2. 캔버스 크기를 동적으로 조절하는 함수
-        function resizeCanvas() {
-            const container = canvas.parentElement;
-            const size = container.clientWidth;
-            // 캔버스의 해상도를 높여 텍스트가 선명하게 보이도록 설정
-            canvas.width = size * window.devicePixelRatio;
-            canvas.height = size * window.devicePixelRatio;
-            // CSS 크기는 그대로 유지
-            canvas.style.width = `${size}px`;
-            canvas.style.height = `${size}px`;
-            drawWheel(); // 리사이즈 후 휠 다시 그리기
-        }
+<script>
+    const canvas = document.getElementById('wheelCanvas');
+    const ctx = canvas.getContext('2d');
+    const spinBtn = document.getElementById('spinBtn');
+    const optionInput = document.getElementById('optionInput');
+    const optionWeightInput = document.getElementById('optionWeightInput');
+    const addBtn = document.getElementById('addBtn');
+    const optionsList = document.getElementById('optionsList');
+    const resultModal = document.getElementById('resultModal');
+    const modalContent = document.getElementById('modalContent');
+    const resultText = document.getElementById('resultText');
+    const closeModal = document.getElementById('closeModal');
+    const listToggleBtn = document.getElementById('listToggleBtn');
+    
+    // 각 항목은 이름(name)과 비율(weight)을 가집니다.
+    let options = [
+        { name: '🍕피자', weight: 1 },
+        { name: '🍗치킨', weight: 1 },
+        { name: '🍔햄버거', weight: 1 },
+        { name: '🍜라면', weight: 1 },
+        { name: '🍣초밥', weight: 1 },
+        { name: '🍰굶기', weight: 2 } // '굶기'는 2배 높은 확률!
+    ];
+    
+    const colors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'];
+    
+    let currentRotation = 0;
+    let isSpinning = false;
+    
+    // (수정) 화면 크기가 변경될 때마다 원판 크기를 다시 계산하고 그려주는 함수
+    function resizeCanvas() {
+        const container = canvas.parentElement;
+        const size = container.clientWidth;
+        // (수정) 고해상도 디스플레이(레티나 등)에서도 선명하게 보이도록 devicePixelRatio를 곱해줍니다.
+        canvas.width = size * window.devicePixelRatio;
+        canvas.height = size * window.devicePixelRatio;
+        canvas.style.width = `${size}px`;
+        canvas.style.height = `${size}px`;
+        drawWheel();
+    }
 
-        function drawWheel() {
-            const numOptions = options.length;
-            const radius = canvas.width / 2;
-            const center = radius;
+    function drawWheel() {
+        const numOptions = options.length;
+        // (수정) 캔버스 크기에 맞춰 동적으로 반지름과 중앙점을 계산합니다.
+        const radius = canvas.width / 2;
+        const center = radius;
 
-            if (numOptions === 0) {
-                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                 return;
-            };
+        if (numOptions === 0) {
+             ctx.clearRect(0, 0, canvas.width, canvas.height);
+             return;
+        };
 
-            const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-            let startAngle = 0;
+        const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+        let startAngle = 0;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // (수정) 폰트 크기도 캔버스 크기에 비례하여 조절되도록 수정합니다.
+        ctx.font = `bold ${radius * 0.09}px Jua`;
+        
+        options.forEach((option, i) => {
+            const arcSize = (option.weight / totalWeight) * 2 * Math.PI;
+            const endAngle = startAngle + arcSize;
+            ctx.fillStyle = colors[i % colors.length];
             
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // 캔버스 크기에 비례하여 폰트 크기 조절
-            ctx.font = `bold ${radius * 0.09}px Jua`;
+            // 원판 조각 그리기 (수정: 동적 크기 적용)
+            ctx.beginPath();
+            ctx.moveTo(center, center);
+            ctx.arc(center, center, radius, startAngle, endAngle);
+            ctx.lineTo(center, center);
+            ctx.fill();
             
-            options.forEach((option, i) => {
-                const arcSize = (option.weight / totalWeight) * 2 * Math.PI;
-                const endAngle = startAngle + arcSize;
-                ctx.fillStyle = colors[i % colors.length];
-                
-                // 원판 조각 그리기 (중심점과 반지름을 동적으로 사용)
-                ctx.beginPath();
-                ctx.moveTo(center, center);
-                ctx.arc(center, center, radius, startAngle, endAngle);
-                ctx.lineTo(center, center);
-                ctx.fill();
-                
-                // 텍스트 그리기
-                ctx.save();
-                ctx.fillStyle = 'white';
-                const textAngle = startAngle + arcSize / 2;
-                // 텍스트 위치를 반지름에 비례하게 조정
-                ctx.translate(center + Math.cos(textAngle) * radius * 0.6, center + Math.sin(textAngle) * radius * 0.6);
-                ctx.rotate(textAngle + Math.PI / 2);
-                ctx.fillText(option.name, -ctx.measureText(option.name).width / 2, 0);
-                ctx.restore();
+            // 텍스트 그리기 (수정: 동적 크기 및 위치 적용)
+            ctx.save();
+            ctx.fillStyle = 'white';
+            const textAngle = startAngle + arcSize / 2;
+            ctx.translate(center + Math.cos(textAngle) * radius * 0.6, center + Math.sin(textAngle) * radius * 0.6);
+            ctx.rotate(textAngle + Math.PI / 2);
+            ctx.fillText(option.name, -ctx.measureText(option.name).width / 2, 0);
+            ctx.restore();
 
-                startAngle = endAngle;
-            });
-        }
-        
-        function updateOptionsList() {
-            optionsList.innerHTML = '';
-            options.forEach((option, index) => {
-                const tag = document.createElement('span');
-                tag.className = 'bg-gray-700 text-gray-300 text-sm font-medium px-3 py-1 rounded-full flex items-center';
-                tag.textContent = `${option.name} (비율: ${option.weight})`;
-                
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'ml-2 text-red-400 hover:text-red-600 font-bold';
-                removeBtn.textContent = 'x';
-                removeBtn.onclick = () => removeOption(index);
-                
-                tag.appendChild(removeBtn);
-                optionsList.appendChild(tag);
-            });
-            drawWheel();
-        }
-        
-        function addOption() {
-            const newOptionName = optionInput.value.trim();
-            let newOptionWeight = parseInt(optionWeightInput.value);
+            startAngle = endAngle;
+        });
+    }
+    
+    function updateOptionsList() {
+        optionsList.innerHTML = '';
+        options.forEach((option, index) => {
+            const tag = document.createElement('span');
+            tag.className = 'bg-gray-700 text-gray-300 text-sm font-medium px-3 py-1 rounded-full flex items-center';
+            tag.textContent = `${option.name} (비율: ${option.weight})`;
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'ml-2 text-red-400 hover:text-red-600 font-bold';
+            removeBtn.textContent = 'x';
+            removeBtn.onclick = () => removeOption(index);
+            
+            tag.appendChild(removeBtn);
+            optionsList.appendChild(tag);
+        });
+        drawWheel();
+    }
+    
+    function addOption() {
+        const newOptionName = optionInput.value.trim();
+        let newOptionWeight = parseInt(optionWeightInput.value);
 
-            if (isNaN(newOptionWeight) || newOptionWeight < 1) {
-                newOptionWeight = 1;
-            }
-
-            if (newOptionName && !options.some(opt => opt.name === newOptionName)) {
-                options.push({ name: newOptionName, weight: newOptionWeight });
-                optionInput.value = '';
-                optionWeightInput.value = '1';
-                updateOptionsList();
-            }
+        if (isNaN(newOptionWeight) || newOptionWeight < 1) {
+            newOptionWeight = 1;
         }
-        
-        function removeOption(index) {
-            options.splice(index, 1);
+
+        if (newOptionName && !options.some(opt => opt.name === newOptionName)) {
+            options.push({ name: newOptionName, weight: newOptionWeight });
+            optionInput.value = '';
+            optionWeightInput.value = '1';
             updateOptionsList();
         }
-
-        function spin() {
-            if (isSpinning || options.length < 2) return;
-
-            isSpinning = true;
-            spinBtn.disabled = true;
-            spinBtn.textContent = "Spinning...";
-
-            const spinAngle = Math.random() * 360 + 360 * 5;
-            const targetRotation = currentRotation + spinAngle;
-            
-            canvas.style.transition = 'transform 5s cubic-bezier(0.25, 1, 0.5, 1)';
-            canvas.style.transform = `rotate(${targetRotation}deg)`;
-
-            currentRotation = targetRotation;
-            
-            setTimeout(() => {
-                const finalAngleDegrees = currentRotation % 360;
-                const pointerAngleDegrees = 360 - finalAngleDegrees;
-                
-                const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-                let cumulativePercent = 0;
-                let winnerIndex = 0;
-
-                for(let i = 0; i < options.length; i++) {
-                    const itemPercent = (options[i].weight / totalWeight) * 360;
-                    if (pointerAngleDegrees < cumulativePercent + itemPercent) {
-                        winnerIndex = i;
-                        break;
-                    }
-                    cumulativePercent += itemPercent;
-                }
-                
-                showResult(options[winnerIndex].name);
-                
-                isSpinning = false;
-                spinBtn.disabled = false;
-                spinBtn.textContent = "SPIN!";
-
-                canvas.style.transition = 'none';
-                canvas.style.transform = `rotate(${finalAngleDegrees}deg)`;
-                currentRotation = finalAngleDegrees;
-
-            }, 5000);
-        }
-        
-        function showResult(result) {
-            resultText.textContent = result;
-            resultModal.classList.remove('hidden');
-            resultModal.classList.add('flex');
-            setTimeout(() => {
-                modalContent.classList.remove('scale-95', 'opacity-0');
-                showConfetti();
-            }, 10);
-        }
-        
-        function hideResult() {
-            modalContent.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                resultModal.classList.add('hidden');
-                resultModal.classList.remove('flex');
-            }, 300);
-        }
-
-        function showConfetti() {
-            const container = document.getElementById('confetti-container');
-            container.innerHTML = '';
-            for (let i = 0; i < 50; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.top = Math.random() * -50 + 'vh';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.animationDelay = Math.random() * 2 + 's';
-                confetti.style.transform = `scale(${Math.random() * 0.5 + 0.5})`;
-                container.appendChild(confetti);
-            }
-        }
-
-        // 이벤트 리스너
-        spinBtn.addEventListener('click', spin);
-        addBtn.addEventListener('click', addOption);
-        optionInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                addOption();
-            }
-        });
-        optionWeightInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                addOption();
-            }
-        });
-        closeModal.addEventListener('click', hideResult);
-        resultModal.addEventListener('click', (e) => {
-            if(e.target === resultModal) {
-                hideResult();
-            }
-        });
-        listToggleBtn.addEventListener('click', () => {
-            optionsList.classList.toggle('hidden');
-            if (optionsList.classList.contains('hidden')) {
-                listToggleBtn.textContent = '항목 목록 보기';
-            } else {
-                listToggleBtn.textContent = '항목 목록 숨기기';
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && 
-                resultModal.classList.contains('hidden') &&
-                document.activeElement !== optionInput &&
-                document.activeElement !== optionWeightInput) {
-                e.preventDefault();
-                spin();
-            }
-        });
-        
-        // 2. 창 크기가 변경될 때 캔버스 크기 다시 조절
-        window.addEventListener('resize', resizeCanvas);
-
-        // 초기화
+    }
+    
+    function removeOption(index) {
+        options.splice(index, 1);
         updateOptionsList();
-        resizeCanvas(); // 페이지 로드 시 캔버스 크기 설정
-    </script>
+    }
+
+    function spin() {
+        if (isSpinning || options.length < 2) return;
+
+        isSpinning = true;
+        spinBtn.disabled = true;
+        spinBtn.textContent = "Spinning...";
+
+        const spinAngle = Math.random() * 360 + 360 * 5;
+        const targetRotation = currentRotation + spinAngle;
+        
+        canvas.style.transition = 'transform 5s cubic-bezier(0.25, 1, 0.5, 1)';
+        canvas.style.transform = `rotate(${targetRotation}deg)`;
+
+        currentRotation = targetRotation;
+        
+        setTimeout(() => {
+            const finalAngleDegrees = currentRotation % 360;
+            const pointerAngleDegrees = 360 - finalAngleDegrees;
+            
+            const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+            let cumulativePercent = 0;
+            let winnerIndex = 0;
+
+            for(let i = 0; i < options.length; i++) {
+                const itemPercent = (options[i].weight / totalWeight) * 360;
+                if (pointerAngleDegrees < cumulativePercent + itemPercent) {
+                    winnerIndex = i;
+                    break;
+                }
+                cumulativePercent += itemPercent;
+            }
+            
+            showResult(options[winnerIndex].name);
+            
+            isSpinning = false;
+            spinBtn.disabled = false;
+            spinBtn.textContent = "SPIN!";
+
+            canvas.style.transition = 'none';
+            canvas.style.transform = `rotate(${finalAngleDegrees}deg)`;
+            currentRotation = finalAngleDegrees;
+
+        }, 5000);
+    }
+    
+    function showResult(result) {
+        resultText.textContent = result;
+        resultModal.classList.remove('hidden');
+        resultModal.classList.add('flex');
+        setTimeout(() => {
+            modalContent.classList.remove('scale-95', 'opacity-0');
+            showConfetti();
+        }, 10);
+    }
+    
+    function hideResult() {
+        modalContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            resultModal.classList.add('hidden');
+            resultModal.classList.remove('flex');
+        }, 300);
+    }
+
+    function showConfetti() {
+        const container = document.getElementById('confetti-container');
+        container.innerHTML = '';
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.top = Math.random() * -50 + 'vh';
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.animationDelay = Math.random() * 2 + 's';
+            confetti.style.transform = `scale(${Math.random() * 0.5 + 0.5})`;
+            container.appendChild(confetti);
+        }
+    }
+
+    // 이벤트 리스너
+    spinBtn.addEventListener('click', spin);
+    addBtn.addEventListener('click', addOption);
+    optionInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addOption();
+        }
+    });
+    optionWeightInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addOption();
+        }
+    });
+    closeModal.addEventListener('click', hideResult);
+    resultModal.addEventListener('click', (e) => {
+        if(e.target === resultModal) {
+            hideResult();
+        }
+    });
+    listToggleBtn.addEventListener('click', () => {
+        optionsList.classList.toggle('hidden');
+        if (optionsList.classList.contains('hidden')) {
+            listToggleBtn.textContent = '항목 목록 보기';
+        } else {
+            listToggleBtn.textContent = '항목 목록 숨기기';
+        }
+    });
+
+    // 엔터 키로 스핀 기능 추가
+    document.addEventListener('keydown', (e) => {
+        // 모달이 닫혀있고, 입력 필드에 포커스가 없을 때만 엔터키로 스핀
+        if (e.key === 'Enter' && 
+            resultModal.classList.contains('hidden') &&
+            document.activeElement !== optionInput &&
+            document.activeElement !== optionWeightInput) {
+            e.preventDefault(); // 다른 기본 동작 방지
+            spin();
+        }
+    });
+    
+    // (수정) 창 크기가 바뀔 때마다 resizeCanvas 함수를 호출하도록 이벤트 리스너 추가
+    window.addEventListener('resize', resizeCanvas);
+
+    // (수정) 초기화 시 웹 폰트('Jua')가 완전히 로드된 후 캔버스를 그려 글자 깨짐을 방지하고, 반응형 크기를 설정합니다.
+    document.fonts.ready.then(function () {
+        updateOptionsList();
+        resizeCanvas();
+    });
+</script>
 </body>
 </html>
