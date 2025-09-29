@@ -2,390 +2,534 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>안산대학교 대학일자리플러스센터</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <title>안산대학교 대학일자리플러스센터 룰렛게임</title>
+    <meta property="og:title" content="안산대학교 대학일자리플러스센터 룰렛게임">
+    <meta property="og:description" content="행운의 주인공은 바로 당신! 안산대학교 대학일자리플러스센터에서 준비한 룰렛 이벤트를 즐겨보세요.">
+    <meta property="og:image" content="image.png">
+    
     <style>
-        body {
-            font-family: 'Jua', sans-serif;
-            background-color: #1a202c;
-            color: #e2e8f0;
-            overflow-x: hidden;
+        @font-face {
+            font-family: 'BMJUA';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/BMJUA.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
         }
+    </style>
+    
+    <style>
+        :root {
+            --bg-main: #f0f4f8;
+            --card-bg: #ffffff;
+            --primary-color: #3b82f6;
+            --danger-color: #ef4444;
+            --text-dark: #1e293b;
+            --text-light: #f8fafc;
+            --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+            --border-color: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'BMJUA', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .start-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(240, 244, 248, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease-out, visibility 0.5s;
+            opacity: 1;
+            visibility: visible;
+        }
+        .start-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        #startBtn {
+            font-family: 'BMJUA', sans-serif;
+            font-size: 2.5rem;
+            padding: 20px 60px;
+            border-radius: 100px;
+            border: none;
+            color: white;
+            background: linear-gradient(145deg, #2563eb, var(--primary-color));
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+            transition: all 0.2s ease-out;
+            margin-top: 24px;
+        }
+        #startBtn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(59, 130, 246, 0.4);
+        }
+        #startBtn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .container {
+            width: 100vw; height: 100vh;
+            display: flex; flex-direction: column;
+            padding: 24px; gap: 16px;
+        }
+        header { text-align: center; flex-shrink: 0; }
+        h1 {
+            font-size: clamp(2.2rem, 5vw, 3.5rem);
+            color: var(--primary-color);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .main-content {
+            flex-grow: 1; display: grid;
+            grid-template-columns: 1fr 450px;
+            gap: 24px; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 0;
+        }
+        
+        .main-content.list-hidden { grid-template-columns: 1fr 0; gap: 0; }
+        .main-content.list-hidden .options-panel { transform: translateX(100%); opacity: 0; padding: 0; overflow: hidden; }
+
+        .wheel-panel {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 24px;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .main-content.list-hidden .wheel-panel { 
+            transform: scale(1.25);
+        }
+
         .wheel-container {
             position: relative;
-            width: 90vw;
-            height: 90vw;
-            max-width: 400px;
-            max-height: 400px;
+            width: 100%;
+            max-width: 550px;
             margin: 0 auto;
         }
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-            transition: transform 5s cubic-bezier(0.1, 0.7, 0.3, 1);
-        }
-        .pointer {
+        
+        /* --- [수정됨] 캐릭터 포인터 스타일 --- */
+        .wheel-pointer {
             position: absolute;
+            left: calc(100% - 30px); /* 휠과 캐릭터가 살짝 겹치도록 조정 */
             top: 50%;
-            right: -20px;
-            transform: translateY(-50%);
-            width: 0;
-            height: 0;
-            border-top: 25px solid transparent;
-            border-bottom: 25px solid transparent;
-            border-right: 40px solid #f56565;
+            transform: translateY(-50%); /* 세로 중앙 정렬 */
+            
+            /* 이미지 크기 설정 (원하는 크기로 조절 가능) */
+            width: 110px; 
+            height: auto; /* 이미지 비율 유지 */
+            
+            z-index: 10;
+            filter: drop-shadow(3px 3px 5px rgba(0,0,0,0.2));
+            
+            /* 기존 삼각형 스타일 제거 */
+            border: none; 
         }
-        .pointer::before {
-            content: '';
-            position: absolute;
-            top: -15px;
-            right: -40px;
-            width: 30px;
-            height: 30px;
-            background: #f56565;
+
+        .wheel-frame {
+            width: 100%; aspect-ratio: 1 / 1;
+            background: #e0e5ec; border-radius: 50%; padding: 20px;
+            box-shadow: inset 5px 5px 10px #bec3c9, inset -5px -5px 10px #ffffff;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        canvas#wheel {
+            width: 100%; height: 100%;
             border-radius: 50%;
-            border: 5px solid #1a202c;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
+        
+        .wheel-controls { flex-shrink: 0; }
         #spinBtn {
-            font-size: 1.5rem;
-            padding: 1rem 3rem;
-            background: linear-gradient(145deg, #f87171, #ef4444);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            transition: all 0.2s ease-in-out;
+            font-family: 'BMJUA', sans-serif; font-size: 1.8rem;
+            padding: 15px 50px; border-radius: 50px; border: none;
+            color: white; background: linear-gradient(145deg, var(--primary-color), #2563eb);
+            cursor: pointer; box-shadow: 0 8px 15px rgba(59, 130, 246, 0.3);
+            transition: all 0.2s ease-out;
         }
-        #spinBtn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.4);
+        #spinBtn:hover { transform: translateY(-3px); box-shadow: 0 12px 20px rgba(59, 130, 246, 0.4); }
+        #spinBtn:disabled {
+            opacity: 0.6; cursor: not-allowed;
+            transform: none; box-shadow: none;
         }
-        #spinBtn:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+        .options-panel {
+            background: var(--card-bg); border-radius: 16px;
+            box-shadow: var(--shadow); padding: 24px;
+            display: flex; flex-direction: column; gap: 20px;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); min-height: 0;
         }
-        #resultModal {
-            background-color: rgba(0, 0, 0, 0.6);
+        .options-panel h3 { font-size: 1.8rem; text-align: center; }
+        .add-form { display: flex; gap: 10px; flex-wrap: nowrap; }
+        
+        input[type="text"] { flex: 1 1 auto; min-width: 100px; }
+        input[type="number"] { flex: 0 0 50px; }
+
+        input[type="text"], input[type="number"] {
+            border: 2px solid var(--border-color); border-radius: 8px;
+            padding: 12px; font-family: 'BMJUA', sans-serif;
+            font-size: 1.1rem; transition: border-color 0.2s;
         }
-        #closeModal:active {
-            transform: scale(0.95);
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+        input:focus { outline: none; border-color: var(--primary-color); }
+        #addBtn {
+            flex-shrink: 0; border: none; background: var(--primary-color);
+            color: var(--text-light); padding: 12px 20px; border-radius: 8px;
+            font-family: 'BMJUA', sans-serif; font-size: 1.1rem; cursor: pointer;
+            transition: background-color 0.2s;
         }
-        .confetti {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: #f00;
-            opacity: 0.7;
-            animation: confetti-fall 2s ease-out forwards;
+        #addBtn:hover { background: #2563eb; }
+        .tags-container {
+            flex-grow: 1; overflow-y: auto; display: flex;
+            flex-wrap: wrap; gap: 10px; align-content: flex-start;
+            padding: 10px; background: #f8fafc; border-radius: 8px;
         }
-        @keyframes confetti-fall {
-            0% { transform: translateY(-100vh) rotate(0deg); }
-            100% { transform: translateY(100vh) rotate(720deg); }
+        .tag {
+            display: inline-flex; align-items: center; background: white;
+            border: 1px solid var(--border-color); padding: 8px 14px;
+            border-radius: 18px; font-size: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        .character {
-            position: fixed;
-            bottom: 0;
-            max-width: 100px;
-            width: 20vw;
-            z-index: -1;
-            opacity: 0.8;
+        .tag .remove-btn {
+            margin-left: 10px; background: none; border: none;
+            color: #64748b; cursor: pointer; font-weight: bold;
         }
-        #character-ani {
-            left: 5%;
+        .tag .remove-btn:hover { color: var(--danger-color); }
+        
+        #listToggleBtn {
+            position: fixed; bottom: 24px; right: 24px; z-index: 100;
+            background: var(--card-bg); border: none; padding: 12px 20px;
+            border-radius: 50px; box-shadow: var(--shadow);
+            font-family: 'BMJUA', sans-serif; font-size: 1rem; cursor: pointer;
+            transition: all 0.2s ease;
         }
-        #character-sani {
-            right: 5%;
+        #listToggleBtn:hover { transform: translateY(-3px); }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 200; opacity: 0; visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
         }
-        @media (max-width: 1024px) {
-            .character {
-                display: none;
-            }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: var(--card-bg); padding: 40px; border-radius: 20px;
+            text-align: center; position: relative;
+            transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        #confetti-container {
-            pointer-events: none;
+        .modal-overlay.show .modal-content { transform: scale(1); }
+        .modal-content h2 { font-size: 2rem; }
+        #resultText { font-size: 4rem; color: var(--primary-color); margin: 16px 0; font-weight: bold; }
+        #closeModal {
+            margin-top: 20px; padding: 12px 24px; border: none;
+            background: var(--danger-color); color: white; border-radius: 10px;
+            font-size: 1.2rem; font-family: 'BMJUA', sans-serif; cursor: pointer;
+        }
+        
+        @media (max-width: 960px) {
+            .main-content { grid-template-columns: 1fr; grid-template-rows: 1fr auto; height: calc(100% - 80px); }
+            .main-content.list-hidden { grid-template-rows: 1fr 0; }
+            .main-content.list-hidden .wheel-panel { transform: scale(1); }
+            .options-panel { max-height: 40vh; }
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4">
-
-    <img src="안이.png" alt="안산대학교 캐릭터 안이" id="character-ani" class="character">
-    <img src="산이.png" alt="안산대학교 캐릭터 산이" id="character-sani" class="character">
-
-    <div class="w-full max-w-4xl mx-auto bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 relative">
-        <h1 class="text-3xl sm:text-4xl text-center font-bold text-blue-400 mb-6">🎡 안산대학교 대학일자리플러스센터 🎡</h1>
-
-        <div class="mb-6">
-            <h2 class="text-xl font-semibold mb-3 text-center text-gray-300">원판에 항목을 추가하세요</h2>
-            <div class="flex flex-col sm:flex-row gap-3">
-                <input type="text" id="optionInput" placeholder="항목 이름" class="flex-grow bg-gray-700 border-2 border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition">
-                <input type="number" id="optionWeightInput" placeholder="비율 (기본 1)" min="1" class="w-full sm:w-32 bg-gray-700 border-2 border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition" value="1">
-                <button id="addBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition duration-200 shadow-md">추가</button>
-            </div>
-        </div>
-
-        <div id="optionsList" class="flex flex-wrap justify-center gap-2 mb-8 transition-all">
-            </div>
-
-        <div class="text-center">
-            <div class="wheel-container mb-8">
-                <canvas id="wheelCanvas"></canvas>
-                <div class="pointer"></div>
-            </div>
-            <button id="spinBtn" class="text-white font-bold rounded-full shadow-lg">SPIN!</button>
-        </div>
-
-        <button id="listToggleBtn" class="absolute bottom-6 right-8 bg-gray-600 hover:bg-gray-500 text-white text-sm font-bold py-2 px-4 rounded-lg transition duration-200 shadow-lg z-10">항목 목록 숨기기</button>
+<body>
+    <div class="start-overlay" id="startOverlay">
+        <h1>🎡 룰렛 이벤트 🎡</h1>
+        <button id="startBtn" disabled>로딩 중...</button>
     </div>
 
-    <div id="resultModal" class="fixed inset-0 hidden items-center justify-center z-50">
-        <div id="modalContent" class="bg-gray-800 text-white rounded-2xl shadow-2xl p-10 text-center relative transform transition-all duration-300 scale-95 opacity-0">
-            <div id="confetti-container" class="absolute inset-0 overflow-hidden rounded-2xl"></div>
-            <h2 class="text-2xl font-bold mb-4">🎉 결과 🎉</h2>
-            <p id="resultText" class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-orange-400"></p>
-            <button id="closeModal" class="mt-8 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition duration-200">닫기</button>
+    <div class="container">
+        <header><h1>안산대학교 대학일자리플러스센터</h1></header>
+        
+        <main class="main-content list-hidden" id="mainContent">
+            <section class="wheel-panel">
+                <div class="wheel-container">
+                    <div class="wheel-frame">
+                        <canvas id="wheel" width="800" height="800"></canvas>
+                    </div>
+                    <img src="산이.png" class="wheel-pointer" alt="룰렛 포인터">
+                </div>
+                <div class="wheel-controls">
+                    <button id="spinBtn">SPIN</button>
+                </div>
+            </section>
+            <aside class="options-panel">
+                <h3>룰렛 항목 관리</h3>
+                <form class="add-form" onsubmit="return false;">
+                    <input type="text" id="optionInput" placeholder="항목 이름">
+                    <input type="number" id="optionWeightInput" value="" min="" placeholder="비율 입력 (1, 2...)">
+                    <button id="addBtn">추가</button>
+                </form>
+                <div class="tags-container" id="optionsList"></div>
+            </aside>
+        </main>
+    </div>
+    <button id="listToggleBtn">항목 목록 숨기기</button>
+    <div id="resultModal" class="modal-overlay">
+        <div id="modalContent" class="modal-content">
+            <h2>🎉 축하합니다! 🎉</h2>
+            <p id="resultText"></p>
+            <button id="closeModal">닫기</button>
         </div>
     </div>
-
-<script>
-    const canvas = document.getElementById('wheelCanvas');
-    const ctx = canvas.getContext('2d');
-    const spinBtn = document.getElementById('spinBtn');
-    const optionInput = document.getElementById('optionInput');
-    const optionWeightInput = document.getElementById('optionWeightInput');
-    const addBtn = document.getElementById('addBtn');
-    const optionsList = document.getElementById('optionsList');
-    const resultModal = document.getElementById('resultModal');
-    const modalContent = document.getElementById('modalContent');
-    const resultText = document.getElementById('resultText');
-    const closeModal = document.getElementById('closeModal');
-    const listToggleBtn = document.getElementById('listToggleBtn');
     
-    let options = [
-        { name: '🍕피자', weight: 1 },
-        { name: '🍗치킨', weight: 1 },
-        { name: '🍔햄버거', weight: 1 },
-        { name: '🍜라면', weight: 1 },
-        { name: '🍣초밥', weight: 1 },
-        { name: '🍰굶기', weight: 2 }
-    ];
-    
-    const colors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'];
-    
-    let currentRotation = 0;
-    let isSpinning = false;
-    
-    function resizeCanvas() {
-        const container = canvas.parentElement;
-        const size = container.clientWidth;
-        canvas.width = size * window.devicePixelRatio;
-        canvas.height = size * window.devicePixelRatio;
-        canvas.style.width = `${size}px`;
-        canvas.style.height = `${size}px`;
-        drawWheel();
-    }
+    <script>
+        // JS 요소 선택
+        const startOverlay = document.getElementById('startOverlay');
+        const startBtn = document.getElementById('startBtn');
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        const addBtn = document.getElementById('addBtn');
+        const optionInput = document.getElementById('optionInput');
+        const optionWeightInput = document.getElementById('optionWeightInput');
+        const optionsList = document.getElementById('optionsList');
+        const listToggleBtn = document.getElementById('listToggleBtn');
+        const mainContent = document.getElementById('mainContent');
+        const resultModal = document.getElementById('resultModal');
+        const resultText = document.getElementById('resultText');
+        const closeModal = document.getElementById('closeModal');
 
-    function drawWheel() {
-        const numOptions = options.length;
-        const radius = canvas.width / 2;
-        const center = radius;
+        let options = [
+            { name: '부채', weight: 1 }, { name: '포스트잇', weight: 1 },
+            { name: '핸드크림', weight: 1 }, { name: '커피', weight: 1 },
+            { name: '마우스', weight: 1 }
+        ];
+        const colors = ['#3b82f6', '#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#8b5cf6', '#d946ef'];
+        let currentRotation = 0;
+        let isSpinning = false;
+        let highlightInterval;
 
-        if (numOptions === 0) {
-             ctx.clearRect(0, 0, canvas.width, canvas.height);
-             return;
-        };
+        const FONT_FAMILY = "'BMJUA', Arial, sans-serif";
 
-        const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-        let startAngle = 0;
-        
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = `bold ${radius * 0.09}px Jua`;
-        
-        options.forEach((option, i) => {
-            const arcSize = (option.weight / totalWeight) * 2 * Math.PI;
-            const endAngle = startAngle + arcSize;
-            ctx.fillStyle = colors[i % colors.length];
+        function getOptimalFontSize(arcSize, text, radius) {
+            const maxFontSize = radius / 5;
+            const minFontSize = 12;
+            let fontSize = maxFontSize;
             
-            ctx.beginPath();
-            ctx.moveTo(center, center);
-            ctx.arc(center, center, radius, startAngle, endAngle);
-            ctx.lineTo(center, center);
-            ctx.fill();
-            
-            ctx.save();
-            ctx.fillStyle = 'white';
-            const textAngle = startAngle + arcSize / 2;
-            ctx.translate(center + Math.cos(textAngle) * radius * 0.6, center + Math.sin(textAngle) * radius * 0.6);
-            ctx.rotate(textAngle + Math.PI / 2);
-            ctx.fillText(option.name, -ctx.measureText(option.name).width / 2, 0);
-            ctx.restore();
+            ctx.font = `bold ${fontSize}px ${FONT_FAMILY}`;
+            let textWidth = ctx.measureText(text).width;
 
-            startAngle = endAngle;
-        });
-    }
-    
-    function updateOptionsList() {
-        optionsList.innerHTML = '';
-        options.forEach((option, index) => {
-            const tag = document.createElement('span');
-            tag.className = 'bg-gray-700 text-gray-300 text-sm font-medium px-3 py-1 rounded-full flex items-center';
-            tag.textContent = `${option.name} (비율: ${option.weight})`;
-            
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'ml-2 text-red-400 hover:text-red-600 font-bold';
-            removeBtn.textContent = 'x';
-            removeBtn.onclick = () => removeOption(index);
-            
-            tag.appendChild(removeBtn);
-            optionsList.appendChild(tag);
-        });
-        drawWheel();
-    }
-    
-    function addOption() {
-        const newOptionName = optionInput.value.trim();
-        let newOptionWeight = parseInt(optionWeightInput.value);
-
-        if (isNaN(newOptionWeight) || newOptionWeight < 1) {
-            newOptionWeight = 1;
+            const arcLength = radius * arcSize * 0.7;
+            while (textWidth > arcLength && fontSize > minFontSize) {
+                fontSize -= 1;
+                ctx.font = `bold ${fontSize}px ${FONT_FAMILY}`;
+                textWidth = ctx.measureText(text).width;
+            }
+            return Math.max(fontSize, minFontSize);
         }
 
-        if (newOptionName && !options.some(opt => opt.name === newOptionName)) {
-            options.push({ name: newOptionName, weight: newOptionWeight });
+        function drawWheel() {
+            if (options.length === 0) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height); return;
+            }
+            const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+            let startAngle = 0;
+            const radius = canvas.width / 2;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            options.forEach((option, i) => {
+                const arcSize = (option.weight / totalWeight) * 2 * Math.PI;
+                const endAngle = startAngle + arcSize;
+                
+                ctx.beginPath();
+                ctx.moveTo(radius, radius);
+                ctx.arc(radius, radius, radius, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.fillStyle = 'white';
+                
+                const fontSize = getOptimalFontSize(arcSize, option.name, radius);
+                ctx.font = `bold ${fontSize}px ${FONT_FAMILY}`;
+                
+                const textAngle = startAngle + arcSize / 2;
+                ctx.translate(radius + Math.cos(textAngle) * (radius * 0.6), radius + Math.sin(textAngle) * (radius * 0.6));
+                ctx.rotate(textAngle + Math.PI / 2);
+                ctx.textAlign = 'center';
+                
+                ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+                ctx.lineWidth = 6;
+                ctx.strokeText(option.name, 0, 0);
+                ctx.fillText(option.name, 0, 0);
+                ctx.restore();
+                startAngle = endAngle;
+            });
+        }
+        
+        function updateOptionsList() {
+            optionsList.innerHTML = '';
+            options.forEach((option, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'tag';
+                tag.innerHTML = `<span>${option.name} (비율: ${option.weight})</span>`;
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = 'x';
+                removeBtn.onclick = () => removeOption(index);
+                tag.appendChild(removeBtn);
+                optionsList.appendChild(tag);
+            });
+            drawWheel();
+            spinBtn.disabled = options.length < 2;
+        }
+
+        function addOption() {
+            const name = optionInput.value.trim();
+            let weight = parseInt(optionWeightInput.value);
+            if (isNaN(weight) || weight < 1) weight = 1;
+            if (!name) return alert('항목 이름을 입력해주세요.');
+            if (options.some(opt => opt.name === name)) return alert('이미 존재하는 항목입니다.');
+            options.push({ name, weight });
             optionInput.value = '';
             optionWeightInput.value = '1';
             updateOptionsList();
         }
-    }
-    
-    function removeOption(index) {
-        options.splice(index, 1);
-        updateOptionsList();
-    }
+        function removeOption(index) {
+            options.splice(index, 1);
+            updateOptionsList();
+        }
 
-    function spin() {
-        if (isSpinning || options.length < 2) return;
-
-        isSpinning = true;
-        spinBtn.disabled = true;
-        spinBtn.textContent = "Spinning...";
-
-        const spinAngle = Math.random() * 360 + 360 * 5;
-        const targetRotation = currentRotation + spinAngle;
-        
-        canvas.style.transition = 'transform 5s cubic-bezier(0.25, 1, 0.5, 1)';
-        canvas.style.transform = `rotate(${targetRotation}deg)`;
-
-        currentRotation = targetRotation;
-        
-        setTimeout(() => {
-            const finalAngleDegrees = currentRotation % 360;
-            const pointerAngleDegrees = 360 - finalAngleDegrees;
-            
+        function highlightWinner(winnerIndex) {
             const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-            let cumulativePercent = 0;
-            let winnerIndex = 0;
+            let startAngle = 0;
+            let winnerStartAngle, winnerArcSize;
 
-            for(let i = 0; i < options.length; i++) {
-                const itemPercent = (options[i].weight / totalWeight) * 360;
-                if (pointerAngleDegrees < cumulativePercent + itemPercent) {
-                    winnerIndex = i;
+            for (let i = 0; i < options.length; i++) {
+                const arcSize = (options[i].weight / totalWeight) * 2 * Math.PI;
+                if (i === winnerIndex) {
+                    winnerStartAngle = startAngle;
+                    winnerArcSize = arcSize;
                     break;
                 }
-                cumulativePercent += itemPercent;
+                startAngle += arcSize;
             }
+            let isBright = true;
+            const radius = canvas.width / 2;
+
+            highlightInterval = setInterval(() => {
+                drawWheel();
+                ctx.beginPath();
+                ctx.moveTo(radius, radius);
+                ctx.arc(radius, radius, radius, winnerStartAngle, winnerStartAngle + winnerArcSize);
+                ctx.closePath();
+                ctx.fillStyle = isBright ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.2)';
+                ctx.fill();
+                isBright = !isBright;
+            }, 200);
+        }
+
+        function spin() {
+            if (isSpinning || options.length < 2) return;
+            isSpinning = true;
+            spinBtn.disabled = true;
+            spinBtn.textContent = "..."
+            clearInterval(highlightInterval);
+
+            const spinAngle = Math.random() * 360 + 360 * 7;
+            const targetRotation = currentRotation + spinAngle;
+            canvas.style.transition = 'transform 6s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            canvas.style.transform = `rotate(${targetRotation}deg)`;
+            currentRotation = targetRotation;
             
-            showResult(options[winnerIndex].name);
-            
-            isSpinning = false;
-            spinBtn.disabled = false;
-            spinBtn.textContent = "SPIN!";
+            setTimeout(() => {
+                const finalAngle = currentRotation % 360;
+                const pointerAngle = (360 - finalAngle) % 360;
+                const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+                let cumulativePercent = 0;
+                let winnerIndex = 0;
 
-            canvas.style.transition = 'none';
-            canvas.style.transform = `rotate(${finalAngleDegrees}deg)`;
-            currentRotation = finalAngleDegrees;
+                for(let i = 0; i < options.length; i++) {
+                    const itemPercent = (options[i].weight / totalWeight) * 360;
+                    if (pointerAngle >= cumulativePercent && pointerAngle < cumulativePercent + itemPercent) {
+                        winnerIndex = i; break;
+                    }
+                    cumulativePercent += itemPercent;
+                }
+                
+                highlightWinner(winnerIndex);
+                
+                setTimeout(() => {
+                    clearInterval(highlightInterval);
+                    drawWheel();
+                    showResult(options[winnerIndex].name);
 
-        }, 5000);
-    }
-    
-    function showResult(result) {
-        resultText.textContent = result;
-        resultModal.classList.remove('hidden');
-        resultModal.classList.add('flex');
-        setTimeout(() => {
-            modalContent.classList.remove('scale-95', 'opacity-0');
-            showConfetti();
-        }, 10);
-    }
-    
-    function hideResult() {
-        modalContent.classList.add('scale-95', 'opacity-0');
-        setTimeout(() => {
-            resultModal.classList.add('hidden');
-            resultModal.classList.remove('flex');
-        }, 300);
-    }
+                    isSpinning = false;
+                    spinBtn.disabled = options.length < 2;
+                    spinBtn.textContent = "SPIN";
+                    
+                    canvas.style.transition = 'none';
+                    const newRotation = finalAngle;
+                    canvas.style.transform = `rotate(${newRotation}deg)`;
+                    currentRotation = newRotation;
+                }, 2000);
 
-    function showConfetti() {
-        const container = document.getElementById('confetti-container');
-        container.innerHTML = '';
-        for (let i = 0; i < 50; i++) {
-            const confetti = document.createElement('div');
-            confetti.className = 'confetti';
-            confetti.style.left = Math.random() * 100 + 'vw';
-            confetti.style.top = Math.random() * -50 + 'vh';
-            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-            confetti.style.animationDelay = Math.random() * 2 + 's';
-            confetti.style.transform = `scale(${Math.random() * 0.5 + 0.5})`;
-            container.appendChild(confetti);
+            }, 6000);
         }
-    }
 
-    spinBtn.addEventListener('click', spin);
-    addBtn.addEventListener('click', addOption);
-    optionInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            addOption();
+        function showResult(result) {
+            resultText.textContent = result;
+            resultModal.classList.add('show');
         }
-    });
-    optionWeightInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            addOption();
+        function hideResult() {
+            resultModal.classList.remove('show');
         }
-    });
-    closeModal.addEventListener('click', hideResult);
-    resultModal.addEventListener('click', (e) => {
-        if(e.target === resultModal) {
-            hideResult();
-        }
-    });
-    listToggleBtn.addEventListener('click', () => {
-        optionsList.classList.toggle('hidden');
-        if (optionsList.classList.contains('hidden')) {
-            listToggleBtn.textContent = '항목 목록 보기';
-        } else {
-            listToggleBtn.textContent = '항목 목록 숨기기';
-        }
-    });
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && 
-            resultModal.classList.contains('hidden') &&
-            document.activeElement !== optionInput &&
-            document.activeElement !== optionWeightInput) {
-            e.preventDefault();
-            spin();
-        }
-    });
-    
-    window.addEventListener('resize', resizeCanvas);
+        spinBtn.addEventListener('click', spin);
+        addBtn.addEventListener('click', addOption);
+        optionInput.addEventListener('keypress', e => { if (e.key === 'Enter') addOption(); });
+        optionWeightInput.addEventListener('keypress', e => { if (e.key === 'Enter') addOption(); });
+        closeModal.addEventListener('click', hideResult);
+        resultModal.addEventListener('click', e => { if(e.target === resultModal) hideResult(); });
+        listToggleBtn.addEventListener('click', () => {
+            const isHidden = mainContent.classList.toggle('list-hidden');
+            listToggleBtn.textContent = isHidden ? '항목 목록 보기' : '항목 목록 숨기기';
+        });
+        document.addEventListener('keydown', e => {
+            const modalHidden = !resultModal.classList.contains('show');
+            const inputFocused = document.activeElement === optionInput || document.activeElement === optionWeightInput;
+            if (e.key === 'Enter' && modalHidden && !inputFocused) {
+                spin();
+            }
+        });
+        
+        // --- 초기화 로직 ---
+        listToggleBtn.textContent = '항목 목록 보기';
+        
+        startBtn.addEventListener('click', () => {
+            startOverlay.classList.add('hidden');
+            updateOptionsList();
+        });
 
-    document.fonts.ready.then(function () {
-        updateOptionsList();
-        resizeCanvas();
-    });
-</script>
+        document.fonts.load("1em 'BMJUA'").then(() => {
+            startBtn.disabled = false;
+            startBtn.textContent = '시작하기';
+        }).catch(err => {
+            console.error('폰트를 불러오는 데 실패했습니다:', err);
+            startBtn.disabled = false;
+            startBtn.textContent = '시작하기';
+        });
+
+    </script>
 </body>
 </html>
