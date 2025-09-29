@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>안산대학교 대학일자리플러스센터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            overflow-x: hidden; /* 가로 스크롤 방지 */
+        }
+        .wheel-container {
+            position: relative;
+            /* PC에서는 최대 400px, 모바일에서는 화면 너비의 90%를 차지하도록 설정 */
+            width: 90vw;
+            height: 90vw;
+            max-width: 400px;
+            max-height: 400px;
+            margin: 0 auto;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            transition: transform 5s cubic-bezier(0.1, 0.7, 0.3, 1);
+        }
+        .pointer {
+            position: absolute;
+            top: 50%;
+            right: -20px;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-top: 25px solid transparent;
+            border-bottom: 25px solid transparent;
+            border-right: 40px solid #f56565;
+        }
+        .pointer::before {
+            content: '';
+            position: absolute;
+            top: -15px;
+            right: -40px;
+            width: 30px;
+            height: 30px;
+            background: #f56565;
+            border-radius: 50%;
+            border: 5px solid #1a202c;
+        }
+        #spinBtn {
+            font-size: 1.5rem;
+            padding: 1rem 3rem;
+            background: linear-gradient(145deg, #f87171, #ef4444);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s ease-in-out;
+        }
+        #spinBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.4);
+        }
+        #spinBtn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        #resultModal {
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        /* 3. 당첨 닫기 버튼 클릭 효과 추가 */
+        #closeModal:active {
+            transform: scale(0.95);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0.7;
+            animation: confetti-fall 2s ease-out forwards;
+        }
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(720deg); }
+        }
+
+        /* 4. 캐릭터 이미지 스타일 */
+        .character {
+            position: fixed; /* 화면에 고정 */
+            bottom: 0;
+            max-width: 100px; /* 최대 너비 지정 */
+            width: 20vw; /* 화면 너비에 따라 크기 조절 */
+            z-index: -1; /* 다른 콘텐츠 뒤로 보내기 */
+            opacity: 0.8;
+        }
+        #character-ani {
+            left: 5%; /* 왼쪽에서 5% 떨어진 위치 */
+        }
+        #character-sani {
+            right: 5%; /* 오른쪽에서 5% 떨어진 위치 */
+        }
+        /* 모바일 화면에서는 캐릭터 숨기기 (선택사항) */
+        @media (max-width: 1024px) {
+            .character {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <img src="안이.png" alt="안산대학교 캐릭터 안이" id="character-ani" class="character">
+    <img src="산이.png" alt="안산대학교 캐릭터 산이" id="character-sani" class="character">
+
+    <div class="w-full max-w-4xl mx-auto bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 relative">
+        <h1 class="text-4xl md:text-5xl text-center font-bold text-blue-400 mb-6 whitespace-nowrap">🎡 안산대학교 대학일자리플러스센터 🎡</h1>
+
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold mb-3 text-center text-gray-300">원판에 항목을 추가하세요</h2>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <input type="text" id="optionInput" placeholder="항목 이름" class="flex-grow bg-gray-700 border-2 border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition">
+                <input type="number" id="optionWeightInput" placeholder="비율 (기본 1)" min="1" class="w-full sm:w-32 bg-gray-700 border-2 border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition" value="1">
+                <button id="addBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition duration-200 shadow-md">추가</button>
+            </div>
+        </div>
+
+        <div id="optionsList" class="flex flex-wrap justify-center gap-2 mb-8 transition-all">
+            </div>
+
+        <div class="text-center">
+            <div class="wheel-container mb-8">
+                <canvas id="wheelCanvas"></canvas>
+                <div class="pointer"></div>
+            </div>
+            <button id="spinBtn" class="text-white font-bold rounded-full shadow-lg">SPIN!</button>
+        </div>
+
+        <button id="listToggleBtn" class="absolute bottom-6 right-8 bg-gray-600 hover:bg-gray-500 text-white text-sm font-bold py-2 px-4 rounded-lg transition duration-200 shadow-lg z-10">항목 목록 숨기기</button>
+    </div>
+
+    <div id="resultModal" class="fixed inset-0 hidden items-center justify-center z-50">
+        <div id="modalContent" class="bg-gray-800 text-white rounded-2xl shadow-2xl p-10 text-center relative transform transition-all duration-300 scale-95 opacity-0">
+             <div id="confetti-container" class="absolute inset-0 overflow-hidden rounded-2xl"></div>
+            <h2 class="text-2xl font-bold mb-4">🎉 결과 🎉</h2>
+            <p id="resultText" class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-orange-400"></p>
+            <button id="closeModal" class="mt-8 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition duration-200">닫기</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        const optionInput = document.getElementById('optionInput');
+        const optionWeightInput = document.getElementById('optionWeightInput');
+        const addBtn = document.getElementById('addBtn');
+        const optionsList = document.getElementById('optionsList');
+        const resultModal = document.getElementById('resultModal');
+        const modalContent = document.getElementById('modalContent');
+        const resultText = document.getElementById('resultText');
+        const closeModal = document.getElementById('closeModal');
+        const listToggleBtn = document.getElementById('listToggleBtn');
+        
+        let options = [
+            { name: '🍕피자', weight: 1 },
+            { name: '🍗치킨', weight: 1 },
+            { name: '🍔햄버거', weight: 1 },
+            { name: '🍜라면', weight: 1 },
+            { name: '🍣초밥', weight: 1 },
+            { name: '🍰굶기', weight: 2 }
+        ];
+        
+        const colors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'];
+        
+        let currentRotation = 0;
+        let isSpinning = false;
+        
+        // 2. 캔버스 크기를 동적으로 조절하는 함수
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const size = container.clientWidth;
+            // 캔버스의 해상도를 높여 텍스트가 선명하게 보이도록 설정
+            canvas.width = size * window.devicePixelRatio;
+            canvas.height = size * window.devicePixelRatio;
+            // CSS 크기는 그대로 유지
+            canvas.style.width = `${size}px`;
+            canvas.style.height = `${size}px`;
+            drawWheel(); // 리사이즈 후 휠 다시 그리기
+        }
+
+        function drawWheel() {
+            const numOptions = options.length;
+            const radius = canvas.width / 2;
+            const center = radius;
+
+            if (numOptions === 0) {
+                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                 return;
+            };
+
+            const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+            let startAngle = 0;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 캔버스 크기에 비례하여 폰트 크기 조절
+            ctx.font = `bold ${radius * 0.09}px Jua`;
+            
+            options.forEach((option, i) => {
+                const arcSize = (option.weight / totalWeight) * 2 * Math.PI;
+                const endAngle = startAngle + arcSize;
+                ctx.fillStyle = colors[i % colors.length];
+                
+                // 원판 조각 그리기 (중심점과 반지름을 동적으로 사용)
+                ctx.beginPath();
+                ctx.moveTo(center, center);
+                ctx.arc(center, center, radius, startAngle, endAngle);
+                ctx.lineTo(center, center);
+                ctx.fill();
+                
+                // 텍스트 그리기
+                ctx.save();
+                ctx.fillStyle = 'white';
+                const textAngle = startAngle + arcSize / 2;
+                // 텍스트 위치를 반지름에 비례하게 조정
+                ctx.translate(center + Math.cos(textAngle) * radius * 0.6, center + Math.sin(textAngle) * radius * 0.6);
+                ctx.rotate(textAngle + Math.PI / 2);
+                ctx.fillText(option.name, -ctx.measureText(option.name).width / 2, 0);
+                ctx.restore();
+
+                startAngle = endAngle;
+            });
+        }
+        
+        function updateOptionsList() {
+            optionsList.innerHTML = '';
+            options.forEach((option, index) => {
+                const tag = document.createElement('span');
+                tag.className = 'bg-gray-700 text-gray-300 text-sm font-medium px-3 py-1 rounded-full flex items-center';
+                tag.textContent = `${option.name} (비율: ${option.weight})`;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'ml-2 text-red-400 hover:text-red-600 font-bold';
+                removeBtn.textContent = 'x';
+                removeBtn.onclick = () => removeOption(index);
+                
+                tag.appendChild(removeBtn);
+                optionsList.appendChild(tag);
+            });
+            drawWheel();
+        }
+        
+        function addOption() {
+            const newOptionName = optionInput.value.trim();
+            let newOptionWeight = parseInt(optionWeightInput.value);
+
+            if (isNaN(newOptionWeight) || newOptionWeight < 1) {
+                newOptionWeight = 1;
+            }
+
+            if (newOptionName && !options.some(opt => opt.name === newOptionName)) {
+                options.push({ name: newOptionName, weight: newOptionWeight });
+                optionInput.value = '';
+                optionWeightInput.value = '1';
+                updateOptionsList();
+            }
+        }
+        
+        function removeOption(index) {
+            options.splice(index, 1);
+            updateOptionsList();
+        }
+
+        function spin() {
+            if (isSpinning || options.length < 2) return;
+
+            isSpinning = true;
+            spinBtn.disabled = true;
+            spinBtn.textContent = "Spinning...";
+
+            const spinAngle = Math.random() * 360 + 360 * 5;
+            const targetRotation = currentRotation + spinAngle;
+            
+            canvas.style.transition = 'transform 5s cubic-bezier(0.25, 1, 0.5, 1)';
+            canvas.style.transform = `rotate(${targetRotation}deg)`;
+
+            currentRotation = targetRotation;
+            
+            setTimeout(() => {
+                const finalAngleDegrees = currentRotation % 360;
+                const pointerAngleDegrees = 360 - finalAngleDegrees;
+                
+                const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+                let cumulativePercent = 0;
+                let winnerIndex = 0;
+
+                for(let i = 0; i < options.length; i++) {
+                    const itemPercent = (options[i].weight / totalWeight) * 360;
+                    if (pointerAngleDegrees < cumulativePercent + itemPercent) {
+                        winnerIndex = i;
+                        break;
+                    }
+                    cumulativePercent += itemPercent;
+                }
+                
+                showResult(options[winnerIndex].name);
+                
+                isSpinning = false;
+                spinBtn.disabled = false;
+                spinBtn.textContent = "SPIN!";
+
+                canvas.style.transition = 'none';
+                canvas.style.transform = `rotate(${finalAngleDegrees}deg)`;
+                currentRotation = finalAngleDegrees;
+
+            }, 5000);
+        }
+        
+        function showResult(result) {
+            resultText.textContent = result;
+            resultModal.classList.remove('hidden');
+            resultModal.classList.add('flex');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                showConfetti();
+            }, 10);
+        }
+        
+        function hideResult() {
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                resultModal.classList.add('hidden');
+                resultModal.classList.remove('flex');
+            }, 300);
+        }
+
+        function showConfetti() {
+            const container = document.getElementById('confetti-container');
+            container.innerHTML = '';
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.top = Math.random() * -50 + 'vh';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 2 + 's';
+                confetti.style.transform = `scale(${Math.random() * 0.5 + 0.5})`;
+                container.appendChild(confetti);
+            }
+        }
+
+        // 이벤트 리스너
+        spinBtn.addEventListener('click', spin);
+        addBtn.addEventListener('click', addOption);
+        optionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addOption();
+            }
+        });
+        optionWeightInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addOption();
+            }
+        });
+        closeModal.addEventListener('click', hideResult);
+        resultModal.addEventListener('click', (e) => {
+            if(e.target === resultModal) {
+                hideResult();
+            }
+        });
+        listToggleBtn.addEventListener('click', () => {
+            optionsList.classList.toggle('hidden');
+            if (optionsList.classList.contains('hidden')) {
+                listToggleBtn.textContent = '항목 목록 보기';
+            } else {
+                listToggleBtn.textContent = '항목 목록 숨기기';
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && 
+                resultModal.classList.contains('hidden') &&
+                document.activeElement !== optionInput &&
+                document.activeElement !== optionWeightInput) {
+                e.preventDefault();
+                spin();
+            }
+        });
+        
+        // 2. 창 크기가 변경될 때 캔버스 크기 다시 조절
+        window.addEventListener('resize', resizeCanvas);
+
+        // 초기화
+        updateOptionsList();
+        resizeCanvas(); // 페이지 로드 시 캔버스 크기 설정
+    </script>
+</body>
+</html>
