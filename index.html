@@ -116,24 +116,35 @@
             transform: scale(1.25);
         }
 
+        /* --- ✨ 여기가 수정된 부분입니다 ✨ --- */
         .wheel-container {
             position: relative;
-            width: 100%;
+            /* 화면 높이의 70%를 기준으로 크기 조절 */
+            width: 50vh; 
+            height: 50vh;
+            /* 하지만 최대 크기는 550px를 넘지 않도록 제한 */
             max-width: 550px;
+            max-height: 550px;
             margin: 0 auto;
         }
         
         .wheel-pointer {
             position: absolute;
-            left: calc(100% - 30px);
+            /* 1. 룰렛과 겹치는 위치를 % 단위로 수정 */
+            left: calc(100% - 6%); 
             top: 50%;
             transform: translateY(-50%);
-            width: 110px; 
+            /* 2. 너비를 % 단위로 바꿔 룰렛 크기에 비례하도록 수정 */
+            width: 20%;
+            /* 3. 캐릭터가 너무 커지는 것을 방지하기 위해 최대 너비 지정 */
+            max-width: 110px;
             height: auto;
             z-index: 10;
             filter: drop-shadow(3px 3px 5px rgba(0,0,0,0.2));
             border: none; 
         }
+
+        
 
         .wheel-frame {
             width: 100%; aspect-ratio: 1 / 1;
@@ -141,12 +152,11 @@
             box-shadow: inset 5px 5px 10px #bec3c9, inset -5px -5px 10px #ffffff;
             display: flex; align-items: center; justify-content: center;
         }
-
-        /* --- ✨ 여기가 수정된 부분입니다 ✨ --- */
+        
         canvas#wheel {
             width: 100%;
-            height: auto; /* 높이를 자동으로 설정하여 비율 유지 */
-            aspect-ratio: 1 / 1; /* 1:1 비율을 명시적으로 강제 */
+            height: auto;
+            aspect-ratio: 1 / 1;
             border-radius: 50%;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
