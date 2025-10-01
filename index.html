@@ -121,27 +121,31 @@
             margin: 0 auto;
         }
         
+        /* --- 캐릭터 포인터 스타일 --- */
         .wheel-pointer {
             position: absolute;
             left: calc(100% - 30px);
             top: 50%;
             transform: translateY(-50%);
-            width: 110px; 
+            width: 110px;
             height: auto;
             z-index: 10;
             filter: drop-shadow(3px 3px 5px rgba(0,0,0,0.2));
-            border: none; 
+            border: none;
         }
 
         .wheel-frame {
-            width: 100%; aspect-ratio: 1 / 1;
+            width: 100%;
+            aspect-ratio: 1 / 1;
             background: #e0e5ec; border-radius: 50%; padding: 20px;
             box-shadow: inset 5px 5px 10px #bec3c9, inset -5px -5px 10px #ffffff;
             display: flex; align-items: center; justify-content: center;
         }
 
         canvas#wheel {
-            width: 100%; height: 100%;
+            width: 100%;
+            height: auto;  /* 타원 방지 */
+            display: block;
             border-radius: 50%;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
@@ -232,61 +236,11 @@
             font-size: 1.2rem; font-family: 'BMJUA', sans-serif; cursor: pointer;
         }
         
-        /* --- [개선] 모바일 반응형 코드 --- */
         @media (max-width: 960px) {
-            /* 전체적인 여백을 줄여 공간 확보 */
-            .container {
-                padding: 16px;
-                gap: 12px;
-            }
-
-            /* 모바일에서 헤더 타이틀이 너무 커지지 않도록 조정 */
-            h1 {
-                font-size: clamp(1.8rem, 7vw, 2.5rem);
-            }
-
-            /* [핵심] 기존 세로 쌓임 방식 대신, PC와 동일한 가로 2단 레이아웃을 유지하며 비율만 조정 */
-            .main-content {
-                grid-template-columns: 1fr 280px; /* 옵션 패널 너비를 줄여 룰렛 공간 확보 */
-                gap: 16px;
-            }
-            
-            /* 옵션 패널 내부 여백 축소 */
-            .options-panel {
-                padding: 16px;
-            }
-
-            /* 좁은 화면에서 입력 필드와 버튼이 자연스럽게 줄바꿈 되도록 허용 */
-            .add-form {
-                flex-wrap: wrap; 
-            }
-            
-            /* 캐릭터 포인터 이미지 크기 및 위치 조정 */
-            .wheel-pointer {
-                width: 90px;
-                left: calc(100% - 25px);
-            }
-            
-            /* SPIN 버튼 크기 조정 */
-            #spinBtn {
-                font-size: 1.6rem;
-                padding: 12px 40px;
-            }
-
-            /* 결과 모달창 최적화 */
-            .modal-content {
-                padding: 30px;
-                width: 90%; /* 화면 너비에 맞게 조정 */
-            }
-            #resultText {
-                font-size: 3rem;
-            }
-            
-            /* 시작 화면 버튼 크기 조정 */
-            #startBtn {
-                font-size: 2.2rem;
-                padding: 18px 50px;
-            }
+            .main-content { grid-template-columns: 1fr; grid-template-rows: 1fr auto; height: calc(100% - 80px); }
+            .main-content.list-hidden { grid-template-rows: 1fr 0; }
+            .main-content.list-hidden .wheel-panel { transform: scale(1); }
+            .options-panel { max-height: 40vh; }
         }
     </style>
 </head>
@@ -303,7 +257,7 @@
             <section class="wheel-panel">
                 <div class="wheel-container">
                     <div class="wheel-frame">
-                        <canvas id="wheel" width="800" height="800"></canvas>
+                        <canvas id="wheel"></canvas>
                     </div>
                     <img src="산이.png" class="wheel-pointer" alt="룰렛 포인터">
                 </div>
@@ -315,7 +269,7 @@
                 <h3>룰렛 항목 관리</h3>
                 <form class="add-form" onsubmit="return false;">
                     <input type="text" id="optionInput" placeholder="항목 이름">
-                    <input type="number" id="optionWeightInput" value="" min="1" placeholder="비율(기본 1)">
+                    <input type="number" id="optionWeightInput" value="" min="" placeholder="비율 입력 (1, 2...)">
                     <button id="addBtn">추가</button>
                 </form>
                 <div class="tags-container" id="optionsList"></div>
@@ -332,7 +286,6 @@
     </div>
     
     <script>
-        // JS 요소 선택
         const startOverlay = document.getElementById('startOverlay');
         const startBtn = document.getElementById('startBtn');
         const canvas = document.getElementById('wheel');
@@ -420,169 +373,124 @@
                 startAngle = endAngle;
             });
         }
-        
-        function updateOptionsList() {
-            optionsList.innerHTML = '';
-            options.forEach((option, index) => {
-                const tag = document.createElement('div');
-                tag.className = 'tag';
-                tag.innerHTML = `<span>${option.name} (비율: ${option.weight})</span>`;
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'remove-btn';
-                removeBtn.textContent = 'x';
-                removeBtn.onclick = () => removeOption(index);
-                tag.appendChild(removeBtn);
-                optionsList.appendChild(tag);
-            });
-            drawWheel();
-            spinBtn.disabled = options.length < 2;
-        }
 
-        function addOption() {
-            const name = optionInput.value.trim();
-            let weight = parseInt(optionWeightInput.value);
-            if (isNaN(weight) || weight < 1) weight = 1;
-            if (!name) return alert('항목 이름을 입력해주세요.');
-            if (options.some(opt => opt.name === name)) return alert('이미 존재하는 항목입니다.');
-            options.push({ name, weight });
-            optionInput.value = '';
-            optionWeightInput.value = '';
-            updateOptionsList();
-        }
-        function removeOption(index) {
-            options.splice(index, 1);
-            updateOptionsList();
-        }
-
-        function highlightWinner(winnerIndex) {
-            const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-            let startAngle = 0;
-            let winnerStartAngle, winnerArcSize;
-
-            for (let i = 0; i < options.length; i++) {
-                const arcSize = (options[i].weight / totalWeight) * 2 * Math.PI;
-                if (i === winnerIndex) {
-                    winnerStartAngle = startAngle;
-                    winnerArcSize = arcSize;
-                    break;
-                }
-                startAngle += arcSize;
-            }
-            let isBright = true;
-            const radius = canvas.width / 2;
-
-            highlightInterval = setInterval(() => {
-                drawWheel();
-                ctx.save();
-                ctx.globalCompositeOperation = 'source-atop';
-                ctx.beginPath();
-                ctx.moveTo(radius, radius);
-                ctx.arc(radius, radius, radius - 2, winnerStartAngle, winnerStartAngle + winnerArcSize);
-                ctx.closePath();
-                ctx.fillStyle = isBright ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.2)';
-                ctx.fill();
-                ctx.restore();
-                isBright = !isBright;
-            }, 200);
-        }
-
-        function spin() {
-            if (isSpinning || options.length < 2) return;
+        function spinWheel() {
+            if (isSpinning || options.length === 0) return;
             isSpinning = true;
             spinBtn.disabled = true;
-            spinBtn.textContent = "..."
             clearInterval(highlightInterval);
 
-            const spinAngle = Math.random() * 360 + 360 * 7;
-            const targetRotation = currentRotation + spinAngle;
-            canvas.style.transition = 'transform 6s cubic-bezier(0.2, 0.8, 0.2, 1)';
-            canvas.style.transform = `rotate(${targetRotation}deg)`;
-            currentRotation = targetRotation;
-            
-            setTimeout(() => {
-                const finalAngle = currentRotation % 360;
-                // 포인터가 오른쪽 중앙에 있으므로 0도(3시 방향)를 기준으로 계산합니다.
-                const pointerAngleInRad = (360 - finalAngle) * Math.PI / 180;
-                
-                const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-                let cumulativeAngle = 0;
-                let winnerIndex = 0;
-
-                for(let i = 0; i < options.length; i++) {
-                    const arcSize = (options[i].weight / totalWeight) * 2 * Math.PI;
-                    if (pointerAngleInRad >= cumulativeAngle && pointerAngleInRad < cumulativeAngle + arcSize) {
-                        winnerIndex = i; break;
-                    }
-                    cumulativeAngle += arcSize;
-                }
-                
-                highlightWinner(winnerIndex);
-                
-                setTimeout(() => {
-                    clearInterval(highlightInterval);
-                    drawWheel();
-                    showResult(options[winnerIndex].name);
-
-                    isSpinning = false;
-                    spinBtn.disabled = options.length < 2;
-                    spinBtn.textContent = "SPIN";
-                    
-                    canvas.style.transition = 'none';
-                    const newRotation = finalAngle;
-                    canvas.style.transform = `rotate(${newRotation}deg)`;
-                    currentRotation = newRotation;
-                }, 2000);
-
-            }, 6000);
-        }
-
-        function showResult(result) {
-            resultText.textContent = result;
-            resultModal.classList.add('show');
-        }
-        function hideResult() {
-            resultModal.classList.remove('show');
-        }
-
-        spinBtn.addEventListener('click', spin);
-        addBtn.addEventListener('click', addOption);
-        optionInput.addEventListener('keypress', e => { if (e.key === 'Enter') addOption(); });
-        optionWeightInput.addEventListener('keypress', e => { if (e.key === 'Enter') addOption(); });
-        closeModal.addEventListener('click', hideResult);
-        resultModal.addEventListener('click', e => { if(e.target === resultModal) hideResult(); });
-        listToggleBtn.addEventListener('click', () => {
-            const isHidden = mainContent.classList.toggle('list-hidden');
-            listToggleBtn.textContent = isHidden ? '항목 목록 보기' : '항목 목록 숨기기';
-        });
-        document.addEventListener('keydown', e => {
-            const modalHidden = !resultModal.classList.contains('show');
-            const inputFocused = document.activeElement === optionInput || document.activeElement === optionWeightInput;
-            if (e.key === 'Enter' && modalHidden && !inputFocused) {
-                spin();
+            const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+            let targetWeight = Math.random() * totalWeight;
+            let selectedOption = options[0];
+            for (let opt of options) {
+                if (targetWeight < opt.weight) { selectedOption = opt; break; }
+                targetWeight -= opt.weight;
             }
-        });
-        
-        // --- 초기화 로직 ---
-        listToggleBtn.textContent = '항목 목록 보기';
-        
-        startBtn.addEventListener('click', () => {
-            startOverlay.classList.add('hidden');
-            updateOptionsList();
-        });
+            
+            const totalAngle = 2 * Math.PI;
+            const winningIndex = options.indexOf(selectedOption);
+            const winningAngle = options.slice(0, winningIndex).reduce((sum, opt) => sum + (opt.weight / totalWeight) * totalAngle, 0)
+                + (selectedOption.weight / totalWeight) * totalAngle / 2;
+            
+            const randomSpins = 5 + Math.floor(Math.random() * 3);
+            const finalAngle = (2 * Math.PI * randomSpins) - winningAngle + (Math.PI * 2);
 
-        document.fonts.load("1em 'BMJUA'").then(() => {
-            startBtn.disabled = false;
-            startBtn.textContent = '시작하기';
-            // 폰트 로드 후 한 번 더 그려주어 텍스트가 정상적으로 표시되도록 함
-            if (!startOverlay.classList.contains('hidden')) {
+            let start = null;
+            const duration = 5000;
+            
+            function animate(timestamp) {
+                if (!start) start = timestamp;
+                const progress = Math.min((timestamp - start) / duration, 1);
+                const easing = 1 - Math.pow(1 - progress, 4);
+                currentRotation = finalAngle * easing;
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(currentRotation);
+                ctx.translate(-canvas.width / 2, -canvas.height / 2);
+                drawWheel();
+                ctx.restore();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    isSpinning = false;
+                    spinBtn.disabled = false;
+                    resultText.textContent = selectedOption.name;
+                    resultModal.classList.add('show');
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function updateOptionsList() {
+            optionsList.innerHTML = '';
+            options.forEach((option, i) => {
+                const tag = document.createElement('div');
+                tag.className = 'tag';
+                tag.innerHTML = `${option.name} <small>(${option.weight})</small> <button class="remove-btn" data-index="${i}">&times;</button>`;
+                optionsList.appendChild(tag);
+            });
+        }
+
+        addBtn.addEventListener('click', () => {
+            const name = optionInput.value.trim();
+            const weight = parseInt(optionWeightInput.value) || 1;
+            if (name) {
+                options.push({ name, weight });
+                optionInput.value = '';
+                optionWeightInput.value = '';
+                drawWheel();
                 updateOptionsList();
             }
-        }).catch(err => {
-            console.error('폰트를 불러오는 데 실패했습니다:', err);
-            startBtn.disabled = false;
-            startBtn.textContent = '시작하기';
         });
 
+        optionsList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-btn')) {
+                options.splice(e.target.dataset.index, 1);
+                drawWheel();
+                updateOptionsList();
+            }
+        });
+
+        spinBtn.addEventListener('click', spinWheel);
+        listToggleBtn.addEventListener('click', () => {
+            mainContent.classList.toggle('list-hidden');
+            listToggleBtn.textContent = mainContent.classList.contains('list-hidden') ? "항목 목록 보기" : "항목 목록 숨기기";
+        });
+        closeModal.addEventListener('click', () => {
+            resultModal.classList.remove('show');
+        });
+
+        // ✅ 반응형 캔버스 리사이즈 처리
+        function resizeCanvas() {
+            const container = document.querySelector('.wheel-frame');
+            const size = Math.min(container.clientWidth, container.clientHeight);
+            const dpr = window.devicePixelRatio || 1;
+
+            canvas.width = size * dpr;
+            canvas.height = size * dpr;
+
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(dpr, dpr);
+
+            drawWheel();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        window.onload = () => {
+            resizeCanvas();
+            updateOptionsList();
+            setTimeout(() => {
+                startBtn.disabled = false;
+                startBtn.textContent = "게임 시작!";
+            }, 1000);
+        };
+
+        startBtn.addEventListener('click', () => {
+            startOverlay.classList.add('hidden');
+        });
     </script>
 </body>
 </html>
