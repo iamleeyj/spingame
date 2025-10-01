@@ -91,7 +91,7 @@
         }
         header { text-align: center; flex-shrink: 0; }
         h1 {
-            font-size: clamp(1.5rem, 5vw, 2.4rem);
+            font-size: clamp(2.2rem, 5vw, 3.5rem);
             color: var(--primary-color);
             text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
         }
@@ -142,6 +142,7 @@
             display: flex; align-items: center; justify-content: center;
         }
 
+        /* --- ✨ 여기가 수정된 부분입니다 ✨ --- */
         canvas#wheel {
             width: 100%;
             height: auto; /* 높이를 자동으로 설정하여 비율 유지 */
@@ -254,6 +255,7 @@
             
             header h1 {
                 font-size: clamp(1.8rem, 6vw, 2.4rem);
+                word-break: keep-all;
             }
             
             /* 2. 룰렛과 항목 관리를 세로로 쌓는 1단 레이아웃으로 변경 */
