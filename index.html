@@ -121,21 +121,15 @@
             margin: 0 auto;
         }
         
-        /* --- [수정됨] 캐릭터 포인터 스타일 --- */
         .wheel-pointer {
             position: absolute;
-            left: calc(100% - 30px); /* 휠과 캐릭터가 살짝 겹치도록 조정 */
+            left: calc(100% - 30px);
             top: 50%;
-            transform: translateY(-50%); /* 세로 중앙 정렬 */
-            
-            /* 이미지 크기 설정 (원하는 크기로 조절 가능) */
+            transform: translateY(-50%);
             width: 110px; 
-            height: auto; /* 이미지 비율 유지 */
-            
+            height: auto;
             z-index: 10;
             filter: drop-shadow(3px 3px 5px rgba(0,0,0,0.2));
-            
-            /* 기존 삼각형 스타일 제거 */
             border: none; 
         }
 
@@ -238,11 +232,61 @@
             font-size: 1.2rem; font-family: 'BMJUA', sans-serif; cursor: pointer;
         }
         
+        /* --- [개선] 모바일 반응형 코드 --- */
         @media (max-width: 960px) {
-            .main-content { grid-template-columns: 1fr; grid-template-rows: 1fr auto; height: calc(100% - 80px); }
-            .main-content.list-hidden { grid-template-rows: 1fr 0; }
-            .main-content.list-hidden .wheel-panel { transform: scale(1); }
-            .options-panel { max-height: 40vh; }
+            /* 전체적인 여백을 줄여 공간 확보 */
+            .container {
+                padding: 16px;
+                gap: 12px;
+            }
+
+            /* 모바일에서 헤더 타이틀이 너무 커지지 않도록 조정 */
+            h1 {
+                font-size: clamp(1.8rem, 7vw, 2.5rem);
+            }
+
+            /* [핵심] 기존 세로 쌓임 방식 대신, PC와 동일한 가로 2단 레이아웃을 유지하며 비율만 조정 */
+            .main-content {
+                grid-template-columns: 1fr 280px; /* 옵션 패널 너비를 줄여 룰렛 공간 확보 */
+                gap: 16px;
+            }
+            
+            /* 옵션 패널 내부 여백 축소 */
+            .options-panel {
+                padding: 16px;
+            }
+
+            /* 좁은 화면에서 입력 필드와 버튼이 자연스럽게 줄바꿈 되도록 허용 */
+            .add-form {
+                flex-wrap: wrap; 
+            }
+            
+            /* 캐릭터 포인터 이미지 크기 및 위치 조정 */
+            .wheel-pointer {
+                width: 90px;
+                left: calc(100% - 25px);
+            }
+            
+            /* SPIN 버튼 크기 조정 */
+            #spinBtn {
+                font-size: 1.6rem;
+                padding: 12px 40px;
+            }
+
+            /* 결과 모달창 최적화 */
+            .modal-content {
+                padding: 30px;
+                width: 90%; /* 화면 너비에 맞게 조정 */
+            }
+            #resultText {
+                font-size: 3rem;
+            }
+            
+            /* 시작 화면 버튼 크기 조정 */
+            #startBtn {
+                font-size: 2.2rem;
+                padding: 18px 50px;
+            }
         }
     </style>
 </head>
@@ -271,7 +315,7 @@
                 <h3>룰렛 항목 관리</h3>
                 <form class="add-form" onsubmit="return false;">
                     <input type="text" id="optionInput" placeholder="항목 이름">
-                    <input type="number" id="optionWeightInput" value="" min="" placeholder="비율 입력 (1, 2...)">
+                    <input type="number" id="optionWeightInput" value="" min="1" placeholder="비율(기본 1)">
                     <button id="addBtn">추가</button>
                 </form>
                 <div class="tags-container" id="optionsList"></div>
@@ -402,7 +446,7 @@
             if (options.some(opt => opt.name === name)) return alert('이미 존재하는 항목입니다.');
             options.push({ name, weight });
             optionInput.value = '';
-            optionWeightInput.value = '1';
+            optionWeightInput.value = '';
             updateOptionsList();
         }
         function removeOption(index) {
@@ -429,12 +473,15 @@
 
             highlightInterval = setInterval(() => {
                 drawWheel();
+                ctx.save();
+                ctx.globalCompositeOperation = 'source-atop';
                 ctx.beginPath();
                 ctx.moveTo(radius, radius);
-                ctx.arc(radius, radius, radius, winnerStartAngle, winnerStartAngle + winnerArcSize);
+                ctx.arc(radius, radius, radius - 2, winnerStartAngle, winnerStartAngle + winnerArcSize);
                 ctx.closePath();
-                ctx.fillStyle = isBright ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.2)';
+                ctx.fillStyle = isBright ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.2)';
                 ctx.fill();
+                ctx.restore();
                 isBright = !isBright;
             }, 200);
         }
@@ -454,17 +501,19 @@
             
             setTimeout(() => {
                 const finalAngle = currentRotation % 360;
-                const pointerAngle = (360 - finalAngle) % 360;
+                // 포인터가 오른쪽 중앙에 있으므로 0도(3시 방향)를 기준으로 계산합니다.
+                const pointerAngleInRad = (360 - finalAngle) * Math.PI / 180;
+                
                 const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-                let cumulativePercent = 0;
+                let cumulativeAngle = 0;
                 let winnerIndex = 0;
 
                 for(let i = 0; i < options.length; i++) {
-                    const itemPercent = (options[i].weight / totalWeight) * 360;
-                    if (pointerAngle >= cumulativePercent && pointerAngle < cumulativePercent + itemPercent) {
+                    const arcSize = (options[i].weight / totalWeight) * 2 * Math.PI;
+                    if (pointerAngleInRad >= cumulativeAngle && pointerAngleInRad < cumulativeAngle + arcSize) {
                         winnerIndex = i; break;
                     }
-                    cumulativePercent += itemPercent;
+                    cumulativeAngle += arcSize;
                 }
                 
                 highlightWinner(winnerIndex);
@@ -524,6 +573,10 @@
         document.fonts.load("1em 'BMJUA'").then(() => {
             startBtn.disabled = false;
             startBtn.textContent = '시작하기';
+            // 폰트 로드 후 한 번 더 그려주어 텍스트가 정상적으로 표시되도록 함
+            if (!startOverlay.classList.contains('hidden')) {
+                updateOptionsList();
+            }
         }).catch(err => {
             console.error('폰트를 불러오는 데 실패했습니다:', err);
             startBtn.disabled = false;
